@@ -7,26 +7,23 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 from ddcolor_model import DDColor
+from config_utils import get_model_config, get_model_path
 
 
 class ImageColorizationPipeline:
-    def __init__(self, model_path, input_size=256, model_size='large'):
+    def __init__(self, model_path, input_size=256, model_size='large', device=None, verbose=True):
         self.input_size = input_size
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if device is not None:
+            self.device = torch.device(device)
+        else:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if verbose:
+            print(f'Using device: {self.device}')
 
-        self.encoder_name = 'convnext-t' if model_size == 'tiny' else 'convnext-l'
-        self.decoder_type = 'MultiScaleColorDecoder'
-
+        config = get_model_config(model_size)
         self.model = DDColor(
-            encoder_name=self.encoder_name,
-            decoder_name=self.decoder_type,
             input_size=[self.input_size, self.input_size],
-            num_output_channels=2,
-            last_norm='Spectral',
-            do_normalize=False,
-            num_queries=100,
-            num_scales=3,
-            dec_layers=9,
+            **config,
         ).to(self.device)
 
         # Load model weights
@@ -63,12 +60,15 @@ class ImageColorizationPipeline:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_path', type=str, default='modelscope/damo/cv_ddcolor_image-colorization/pytorch_model.pt', help='Path to the model weights')
+    parser.add_argument('--model_path', type=str, default=None, help='Path to the model weights (defaults to config)')
     parser.add_argument('--input', type=str, default='assets/test_images', help='Input image folder')
     parser.add_argument('--output', type=str, default='results', help='Output folder')
     parser.add_argument('--input_size', type=int, default=512, help='Input size for the model')
     parser.add_argument('--model_size', type=str, default='large', help='DDColor model size (tiny or large)')
     args = parser.parse_args()
+
+    if args.model_path is None:
+        args.model_path = get_model_path(args.model_size)
 
     print(f'Output path: {args.output}')
     os.makedirs(args.output, exist_ok=True)

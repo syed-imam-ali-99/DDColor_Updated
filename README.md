@@ -62,25 +62,65 @@ pip install -r requirements.txt
 python3 setup.py develop  
 ```
 
+## Configuration
+
+Model architecture and file paths are centralized in YAML configs under `configs/`:
+
+- `configs/model_large.yaml` / `configs/model_tiny.yaml` — architecture params for each model size
+- `configs/paths.yaml` — default paths for model weights, datasets, and outputs
+- `config_utils.py` — Python config loader
+
+Edit `configs/paths.yaml` to set your model weights, dataset, and output paths. All scripts (Python and bash) read from these configs.
+
+
 ## Quick Start
-### Inference Using Local Script (No `basicsr` Required)
-1. Download the pretrained model:
 
-```python
-from modelscope.hub.snapshot_download import snapshot_download
+### Single Dataset Inference
 
-model_dir = snapshot_download('damo/cv_ddcolor_image-colorization', cache_dir='./modelscope')
-print('model assets saved to %s' % model_dir)
-```
-
-2.	Run inference with
+Run inference on a single dataset using bash scripts. Paths are read from `configs/paths.yaml`:
 
 ```sh
-python infer.py --model_path ./modelscope/damo/cv_ddcolor_image-colorization/pytorch_model.pt --input ./assets/test_images
+bash scripts/infer_coco.sh
+bash scripts/infer_imagenet.sh
+bash scripts/infer_instance.sh
 ```
-or
+
+Override GPU or paths via environment variables:
+
 ```sh
-sh scripts/inference.sh
+GPU=2 bash scripts/infer_coco.sh
+```
+
+Or use `infer_custom_path.sh` for arbitrary input/output paths:
+
+```sh
+GPU=0 INPUT=my_images OUTPUT=my_results bash scripts/infer_custom_path.sh
+```
+
+### Multi-GPU Parallel Inference
+
+Run all datasets in parallel on separate GPUs with live progress bars:
+
+```sh
+bash scripts/infer_multi_gpu.sh
+```
+
+Override GPU assignments:
+
+```sh
+GPUS=1,2,3 bash scripts/infer_multi_gpu.sh
+```
+
+Press `Ctrl+C` to stop all jobs cleanly.
+
+### Inference with Python Directly
+
+```sh
+# Model path auto-resolved from configs/paths.yaml
+python infer.py --input assets/test_images --output results --model_size large
+
+# Explicit model path
+python infer.py --model_path path/to/model.pt --input my_images --output results
 ```
 
 ### Inference Using Hugging Face 
@@ -125,16 +165,10 @@ cv2.imwrite('result.png', result[OutputKeys.OUTPUT_IMG])
 This code will automatically download the `ddcolor_modelscope` model (see [ModelZoo](#model-zoo)) and performs inference. The model file `pytorch_model.pt` can be found in the local path `~/.cache/modelscope/hub/damo`.
 
 ### Gradio Demo
-Install the gradio and other required libraries:
 
 ```sh
-pip install gradio gradio_imageslider timm
-```
-
-Then, you can run the demo with the following command:
-
-```sh
-python gradio_app.py
+bash scripts/gradio.sh
+MODEL_SIZE=tiny bash scripts/gradio.sh
 ```
 
 ## Model Zoo
@@ -145,7 +179,7 @@ We provide several different versions of pretrained models, please check out [Mo
 1. Dataset Preparation: Download the [ImageNet](https://www.image-net.org/) dataset or create a custom dataset. Use this script to obtain the dataset list file:
 
 ```sh
-python data_list/get_meta_file.py
+bash scripts/prepare_data.sh /path/to/images data_list/my_dataset.txt
 ```
 
 2. Download the pretrained weights for [ConvNeXt](https://dl.fbaipublicfiles.com/convnext/convnext_large_22k_224.pth) and [InceptionV3](https://download.pytorch.org/models/inception_v3_google-1a9a5a14.pth) and place them in the `pretrain` folder.
@@ -155,7 +189,10 @@ python data_list/get_meta_file.py
 4. Start training:
 
 ```sh
-sh scripts/train.sh
+bash scripts/train.sh
+
+# Override GPUs or config
+GPUS=0,1 NUM_GPUS=2 CONFIG=options/train/my_config.yml bash scripts/train.sh
 ```
 
 ## ONNX export
@@ -170,27 +207,12 @@ pip install onnx==1.16.1 onnxruntime==1.19.2 onnxsim==0.4.36
 2. Usage example:
 
 ```sh
-python export.py
-usage: export.py [-h] [--input_size INPUT_SIZE] [--batch_size BATCH_SIZE] --model_path MODEL_PATH [--model_size MODEL_SIZE] 
-[--decoder_type DECODER_TYPE] [--export_path EXPORT_PATH] [--opset OPSET]
+MODEL_PATH=path/to/model.pt bash scripts/export_onnx.sh
+MODEL_PATH=path/to/model.pt MODEL_SIZE=large EXPORT_PATH=ddcolor.onnx bash scripts/export_onnx.sh
 ```
 
 Demo of ONNX export using a `ddcolor_paper_tiny` model is available [here](notebooks/colorization_pipeline_onnxruntime.ipynb).
 
-
-## Citation
-
-If our work is helpful for your research, please consider citing:
-
-```
-@inproceedings{kang2023ddcolor,
-  title={DDColor: Towards Photo-Realistic Image Colorization via Dual Decoders},
-  author={Kang, Xiaoyang and Yang, Tao and Ouyang, Wenqi and Ren, Peiran and Li, Lingzhi and Xie, Xuansong},
-  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision},
-  pages={328--338},
-  year={2023}
-}
-```
 
 ## Acknowledgments
 We thank the authors of BasicSR for the awesome training pipeline.

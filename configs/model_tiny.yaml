@@ -1,0 +1,8 @@
+encoder_name: convnext-t
+decoder_name: MultiScaleColorDecoder
+num_output_channels: 2
+last_norm: Spectral
+do_normalize: false
+num_queries: 100
+num_scales: 3
+dec_layers: 9

@@ -8,6 +8,7 @@ import onnx
 import onnxsim
 
 from basicsr.archs.ddcolor_arch import DDColor
+from config_utils import get_model_config
 
 from onnx import load_model, save_model, shape_inference
 from onnxruntime.tools.symbolic_shape_infer import SymbolicShapeInference
@@ -65,38 +66,15 @@ def parse_args():
 def create_onnx_export(args):
     input_size = args.input_size
     device = torch.device('cpu')
-    if args.model_size == 'tiny':
-        encoder_name = 'convnext-t'
-    else:
-        encoder_name = 'convnext-l'
 
-    # hardcoded in inference/colorization_pipeline.py
-    # decoder_type = "MultiScaleColorDecoder"
+    config = get_model_config(args.model_size)
+    if args.decoder_type:
+        config['decoder_name'] = args.decoder_type
 
-    if args.decoder_type == 'MultiScaleColorDecoder':
-        model = DDColor(
-            encoder_name=encoder_name,
-            decoder_name='MultiScaleColorDecoder',
-            input_size=[input_size, input_size],
-            num_output_channels=2,
-            last_norm='Spectral',
-            do_normalize=False,
-            num_queries=100,
-            num_scales=3,
-            dec_layers=9,
-        ).to(device)
-    elif args.decoder_type == 'SingleColorDecoder':
-        model = DDColor(
-            encoder_name=encoder_name,
-            decoder_name='SingleColorDecoder',
-            input_size=[input_size, input_size],
-            num_output_channels=2,
-            last_norm='Spectral',
-            do_normalize=False,
-            num_queries=256,
-        ).to(device)
-    else:
-        raise("decoder_type not implemented.")
+    model = DDColor(
+        input_size=[input_size, input_size],
+        **config,
+    ).to(device)
 
     model.load_state_dict(
         torch.load(args.model_path, map_location=device)['params'],
