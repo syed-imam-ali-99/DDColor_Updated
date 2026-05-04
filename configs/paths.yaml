@@ -1,0 +1,19 @@
+models:
+  ddcolor_large: modelscope/damo/cv_ddcolor_image-colorization/pytorch_model.pt
+  ddcolor_tiny: checkpoints/ddcolor_paper_tiny.pth
+
+data:
+  test_images: assets/test_images
+  imagenet: /data/swarnim/DATA/swarnim/imagenet5k
+  coco: /data/swarnim/DATA/swarnim/coco5k
+  instance: /data/swarnim/DATA/swarnim/instance/val
+
+output:
+  default: results
+  imagenet: results/imagenet_sample
+  coco: results/coco_sample
+  instance: results/instance_sample
+
+pretrain:
+  convnext_large: pretrain/convnext_large_22k_224.pth
+  inception_v3: pretrain/inception_v3_google-1a9a5a14.pth
